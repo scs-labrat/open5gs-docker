@@ -1,187 +1,136 @@
-# Open5GS bằng Docker
-![Ubuntu package](https://img.shields.io/ubuntu/v/:v18.04.1-0ubuntu1)
-![YouTube Video Likes](https://img.shields.io/youtube/likes/6pnh7TqTU6c?style=social)
+Open5GS with Docker
+Ubuntu package YouTube Video Likes
 
-Repositorie này chứa các phần:
-- Chạy Open5gs với phần user plane, control plane, kết hợp eNB, UE bằng srsRAN
-- Sơ lược về hệ thống Location Based Services, sử dụng GMLC, E-SMLC
-- Note về Java, Spring Framework
-- Note về cài và chạy JDK, maven, JDiameter
+This repository contains the following parts:
 
-[Video thực hiện](https://www.youtube.com/watch?v=6pnh7TqTU6c)
+Run Open5gs with user plane, control plane, combining eNB, UE with srsRAN
+Overview of the Location Based Services system, using GMLC, E-SMLC
+Notes on Java, Spring Framework
+Notes on installing and running JDK, maven, JDiameter
+Implementation video
 
-## Contributors:
-- [Ma Viet Duc](https://github.com/maduc238)
-- [Pham Thanh Hai](https://github.com/ahihi8z8z)
+Contributors:
+Ma Viet Duc
+Pham Thanh Hai
+Table of contents
 
-### Mục lục
+Create a communication gateway
 
-[1. Tạo gateway giao tiếp](#nung)
+Pull images from Docker Hub
 
-[2. Pull các image từ Docker Hub](#slong)
+Docker Run the received images
 
-[3. Docker Run các image vừa nhận được](#slam)
+Run the Containers and configure them
 
-[4. Chạy các Container và config chúng](#sli)
-- [4.1. Phần User Plane](#slinung)
-- [4.2. Phần Control Plane](#slislong)
-- [4.3. Phần eNB, UE](#slislam)
+4.1. User Plane Part
+4.2. Control Plane Part
+4.3. eNB, UE Part
 
-[5. Công việc thực hiện](#ha)
+Work performed
 
-<img src="images/Open5gs-config.jpg">
+Create a communication gateway
+Add a gateway with IP is 20.0.0.1
 
-<a name="nung"></a>
-## 1. Tạo gateway giao tiếp
-Thêm gateway có ip là 20.0.0.1
-```
 docker network create --gateway 20.0.0.1 --subnet 20.0.0.0/24 4g
-```
-Sơ đồ cấu hình:
-```
-+-----------+        +---------------------+        +------------------+   if: ogs-internet 60.17.0.23/16
-|  eNodeB   |        |  EPC Control Plane  |        |  EPC User Plane  |------------------------------------- INTERNET
-+-----------+        +---------------------+        +------------------+
-      |                         |                            |
-      |  20.0.0.20              |  20.0.0.2,3,4              |  20.0.0.5,6                  if: 20.0.0.0/24
-    --+-------------------------+----------------------------+--------------------------------------------------
-```
-Bảng thông tin Docker:
-| Docker # | Thành phần | IP Address | OS |
-| --- | --- | --- | --- |
-| EPC Control Plane | MME <br> SGW-C <br> SMF | 20.0.0.2/24 <br> 20.0.0.3/24 <br> 20.0.0.4/24 | Ubuntu 20.04 |
-| EPC User Plane | SGW-U <br> UPF | 20.0.0.5/24 <br> 20.0.0.6/24 | Ubuntu 20.04 |
-| srsRAN | eNodeB, UE | 20.0.0.20/24 | Ubuntu 20.04 |
+Configuration diagram:
 
-Kiểm tra network cho Docker bằng lệnh
-```
++-----------+ +---------------------+ +------------------+ if: ogs-internet 60.17.0.23/16
+| eNodeB | | EPC Control Plane | | EPC User Plane |------------------------------------- INTERNET
++-----------+ +---------------------+ +------------------+
+| | |
+| 20.0.0.20 | 20.0.0.2,3,4 | 20.0.0.5,6 if: 20.0.0.0/24
+--+-------------------------+----------------------------+--------------------------------------------------
+Docker information table:
+
+Docker # Component IP Address OS
+EPC Control Plane MME
+SGW-C
+SMF 20.0.0.2/24
+20.0.0.3/24
+20.0.0.4/24 Ubuntu 20.04
+EPC User Plane SGW-U
+UPF 20.0.0.5/24
+20.0.0.6/24 Ubuntu 20.04
+srsRAN eNodeB, UE 20.0.0.20/24 Ubuntu 20.04
+Check Docker network with command
+
 docker network ls
-```
 
-<a name="slong"></a>
-## 2. Pull các image từ Docker Hub
-Docker của phần User Plane:
-```
+Pull images from Docker Hub
+Docker for the User Plane:
 docker pull maduc238/open5gs:user-plane
-```
-Docker của phần Control Plane:
-```
-docker pull maduc238/open5gs:control-plane 
-```
-Docker của srsRAN
-```
+Docker for the Control Plane:
+
+docker pull maduc238/open5gs:control-plane
+Docker for srsRAN
+
 docker pull aothatday/open5gs:srsenb
-```
 
-<a name="slam"></a>
-## 3. Docker Run các image vừa nhận được
-**Lưu ý: Hai Docker chạy trên 2 terminal khác nhau**
+Docker Run the received images
+Note: Two Dockers run on two different terminals
+User Plane: requires connection to the network, therefore need to create a virtual interface with tun mode
 
-User Plane: yêu cầu kết nối với mạng, do đó cần tạo interface ảo với mode tun
-```
 docker run --name open5gs-u -d -t --cap-add=NET_ADMIN --cap-add=NET_RAW --net 4g --ip 20.0.0.5 --device /dev/net/tun maduc238/open5gs:user-plane
-```
-
-Có thể chạy trên mạng của máy chính: `--network host`
+Can be run on the host's network: --network host
 
 Control Plane:
-```
+
 docker run --name open5gs-c -d -t --cap-add=NET_ADMIN --cap-add=NET_RAW --net 4g --ip 20.0.0.2 maduc238/open5gs:control-plane
-```
-Thêm port kết nối máy chính, ví dụ: `-p 36412:36412/sctp`
+Add host machine connection port, for example: -p 36412:36412/sctp
 
 srsRAN:
-```
+
 docker run --name srsenb -d -t --privileged -v /dev/bus/usb:/dev/bus/usb --net 4g --ip 20.0.0.20 aothatday/open5gs:srsenb
-```
 
-<a name="sli"></a>
-## 4. Chạy các Container và config chúng
-<a name="slinung"></a>
-### 4.1. Phần User Plane
-Cấu hình mạng và chạy container:
+Run the Containers and configure them
+4.1. User Plane Part
+Configure network and run container:
 
-Lưu ý: Cần chỉnh ip của interface S1-U (gtpu) cho SGW-U: `vim install/etc/open5gs/sgwu.yaml`
+Note: Need to adjust IP of S1-U interface (gtpu) for SGW-U: vim install/etc/open5gs/sgwu.yaml
 
-```
-docker exec -it open5gs-u bash 
-```
-```
-ip addr add 20.0.0.6/24 dev eth0 
-```
-```
-ip tuntap add name ogs-internet mode tun 
-```
-```
-ip addr add 60.17.0.23/16 dev ogs-internet 
-```
-```
-ip link set ogs-internet up 
-```
-```
-iptables -t nat -A POSTROUTING -s 60.17.0.23 ! -o ogs-internet -j MASQUERADE 
-```
+docker exec -it open5gs-u bash
+ip addr add 20.0.0.6/24 dev eth0
+ip tuntap add name ogs-internet mode tun
+ip addr add 60.17.0.23/16 dev ogs-internet
+ip link set ogs-internet up
+iptables -t nat -A POSTROUTING -s 60.17.0.23 ! -o ogs-internet -j MASQUERADE
+Note: Change IP if there were modifications before running in sgw-u
 
-**Lưu ý: Sửa IP nếu có chỉnh sửa trước khi chạy trong sgw-u**
-```
-cd home/open5gs 
-./run.sh 
-```
-<a name="slislong"></a>
-### 4.2. Phần Control Plane
-Cấu hình mạng và chạy container:
-```
-docker exec -it open5gs-c bash 
-```
-```
-ip addr add 20.0.0.3/24 dev eth0 
-```
-```
-ip addr add 20.0.0.4/24 dev eth0 
-```
-```
-cd open5gs 
-./run4g_cp.sh 
-```
-Vào phần web UI:
-Truy cập địa chỉ [20.0.0.2:3000](http://20.0.0.2:3000)
-Tên đăng nhập: `admin`
-Mật khẩu: `1423`
+cd home/open5gs
+./run.sh
 
-<a name="slislam"></a>
-### 4.3. Phần eNB, UE
-**Lưu ý: Chạy eNB và UE trên 2 terminal khác nhau**
+4.2. Control Plane Part
+Configure network and run container:
 
-**Trên eNB:**
-```
+docker exec -it open5gs-c bash
+ip addr add 20.0.0.3/24 dev eth0
+ip addr add 20.0.0.4/24 dev eth0
+cd open5gs
+./run4g_cp.sh
+Access web UI: Go to the address 20.0.0.2:3000 Username: admin Password: 1423
+
+4.3. eNB, UE Part
+Note: Run eNB and UE on two different terminals
+
+On eNB:
+
 docker exec -it srsenb bash
-```
-```
 cd srsRAN/srsenb
-../build/srsenb/src/srsenb ./enb.conf 
-```
-**Với eNB thật, sửa `file /root/.config/srsran/enb.conf` và chạy `srsenb`**
+../build/srsenb/src/srsenb ./enb.conf
+For real eNB, modify the file /root/.config/srsran/enb.conf and run srsenb
 
-**Trên UE:**
-```
+On UE:
+
 docker exec -it srsenb bash
-```
-```
 cd srsRAN/srsue
 ../build/srsue/src/srsue ./ue.conf
-```
 
-<a name="ha"></a>
-## 5. Công việc thực hiện
-Lấy id của subnet 4g tạo lúc đầu
-```
+Work performed
+Get the id of the 4g subnet created earlier
 docker network ls | grep 4g
-```
-Máy chủ Docker: capture các gói tin chuyển qua interface mới tạo của docker có dạng br-id
-```
+Docker host: capture packets passing through the newly created interface of docker in the form of br-id
+
 sudo wireshark
-```
-Các máy container: dùng tcpdump bắt các gói trong interface loopback
-```
+Container machines: use tcpdump to capture packets in the loopback interface
+
 tcpdump -i lo -s 65535 -w loopback.pcap
-```
